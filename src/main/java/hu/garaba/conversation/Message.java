@@ -12,6 +12,10 @@ public record Message(LocalDateTime dateTime, String role, List<MessageContent> 
         this(dateTime, role, List.of(new TextMessageContent(text)));
     }
 
+    public long tokenCount() {
+        return contentList.stream().mapToLong(MessageContent::tokenCount).sum();
+    }
+
     public JSONObject toJSONObject() {
         if (contentList.size() == 1 && contentList.get(0) instanceof TextMessageContent(String text)) {
             return new JSONObject(Map.of("role", role, "content", text));

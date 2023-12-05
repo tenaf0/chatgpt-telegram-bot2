@@ -1,4 +1,4 @@
-package hu.garaba.db;
+package hu.garaba.gpt;
 
 public enum GPTUsage {
     ConversationInput,

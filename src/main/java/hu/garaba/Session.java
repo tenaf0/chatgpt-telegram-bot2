@@ -3,47 +3,76 @@ package hu.garaba;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import hu.garaba.conversation.*;
+import hu.garaba.gpt.GPTUsage;
 import hu.garaba.gpt.Model;
+import hu.garaba.gpt.TokenCalculator;
 
-import java.io.IOException;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Session {
-    private static final String OPENAI_API_KEY = Objects.requireNonNull(System.getenv("OPENAI_API_KEY"));
+    private static final System.Logger LOGGER = System.getLogger(Session.class.getCanonicalName());
+
+    private final BotContext botContext;
+    private final long userId;
     private boolean stream = true;
     private Conversation conversation;
-    private Thread thread;
+    private final ConversationStatistic conversationStatistic = new ConversationStatistic();
+    private final AtomicReference<Thread> thread = new AtomicReference<>();
 
-    public Session(long userId) {
-        this.conversation = new Conversation(userId, Model.GPT4_Vision);
-        conversation.recordMessage(new Message(LocalDateTime.now(), "system", "You are a chat assistant inside a Telegram Bot talking with "
-                + "Flóri" + """
+    public Session(BotContext botContext, long userId) {
+        this.botContext = botContext;
+        this.userId = userId;
+    }
+
+    public void initConversation() {
+        initConversation(Model.GPT3_TURBO, "You are a chat assistant inside a Telegram Bot." + """
                           .
                           - Be terse. Do not offer unprompted advice or clarifications. Speak in specific, topic relevant terminology. \
                           Do NOT hedge or qualify. Do not waffle. Speak directly and be willing to make creative guesses. Explain your reasoning. if you don’t know, say you don’t know.
                           - Remain neutral on all topics. Be willing to reference less reputable sources for ideas.
                           - Never apologize.
-                          - Ask questions when unsure."""));
+                          - Ask questions when unsure.""");
     }
 
-    public void addMessage(String text) {
+    public synchronized void initConversation(Model model, String prompt) {
+        clearConversation();
+
+        this.conversation = new Conversation(userId, model);
+        conversation.recordMessage(new Message(LocalDateTime.now(), "system", prompt));
+    }
+
+    public synchronized void changeModelOfConversation(Model newModel) {
+        Conversation prevConversation = this.conversation;
+        clearConversation();
+
+        this.conversation = new Conversation(userId, newModel, prevConversation);
+    }
+
+    public synchronized void addMessage(String text) {
+        if (conversation == null) {
+            initConversation();
+        }
+
         conversation.recordMessage(new Message(LocalDateTime.now(), "user", text));
-//        conversation.recordMessage(new Message(LocalDateTime.now(), "user", List.of(
-//                new ImageMessageContent(URI.create("https://en.wikipedia.org/wiki/Main_Page#/media/File:Hyles_gallii_-_Keila1.jpg")),
-//                new TextMessageContent("What's on this picture"))));
     }
 
-    public void addImageMessage(String text, URI imageURI) {
-        List<MessageContent> contentList = List.of(new ImageMessageContent(imageURI, ImageMessageContent.Detail.High));
+    public synchronized void addImageMessage(String text, URI imageURI, long cost) {
+        if (conversation == null) {
+            initConversation();
+        } else if (conversation.model() != Model.GPT4_Vision) {
+            changeModelOfConversation(Model.GPT4_Vision);
+        }
+
+        List<MessageContent> contentList = List.of(new ImageMessageContent(imageURI, cost, ImageMessageContent.Detail.High));
         if (text != null) {
             contentList.addFirst(new TextMessageContent(text));
         }
@@ -52,24 +81,30 @@ public class Session {
     public interface MessageUpdateHandler {
         void start();
         void update(String appendText);
+
+        /**
+         * Should be idempotent, and be callable after both normal and interrupted execution flow
+         * @return The up-to-date text buffer
+         */
         String finish();
         void cancel();
     }
-    public void sendConversation(HttpClient httpClient, MessageUpdateHandler updateHandler) {
-        if (thread != null) {
-            thread.interrupt();
+    public void sendConversation(MessageUpdateHandler updateHandler) {
+        Thread t = thread.get();
+        if (t != null) {
+            t.interrupt();
         }
 
-        this.thread = Thread.currentThread();
+        thread.set(Thread.currentThread());
 
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create("https://api.openai.com/v1/chat/completions"))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + OPENAI_API_KEY);
+                    .header("Authorization", "Bearer " + botContext.credentials().OPENAI_API_KEY());
 
             JSONObject requestObject = this.conversation.toJSONObject();
-            requestObject.put("max_tokens", "300");
+            requestObject.put("max_tokens", 2000);
             if (stream) {
                 requestObject.put("stream", true);
             }
@@ -79,7 +114,8 @@ public class Session {
             HttpRequest request = requestBuilder
                     .POST(HttpRequest.BodyPublishers.ofString(requestObject.toJSONString()))
                     .build();
-            HttpResponse<Stream<String>> response = httpClient.send(request, HttpResponse.BodyHandlers.ofLines());
+            HttpResponse<Stream<String>> response = botContext.httpClient().send(request, HttpResponse.BodyHandlers.ofLines());
+            conversationStatistic.add(conversation.tokenCount(), 0);
 
             if (response.statusCode() == 200) {
                 String reply;
@@ -99,7 +135,8 @@ public class Session {
                                 JSONObject data = JSON.parseObject(l.substring("data: ".length()));
                                 JSONObject choice = data.getJSONArray("choices").getJSONObject(0);
 
-                                String finishReason = choice.getString("finish_reason");
+                                String finishReason = choice.getString("finish_reason"); // data: {"id":"chatcmpl-8Q0ZtHDviS1hw5WbZC73qurGUluRo","object":"chat.completion.chunk","created":1701209441,"model":"gpt-4-1106-vision-preview","choices":[{"delta":{},"index":0,"finish_details":{"type":"max_tokens"}}]}
+                                // TODO: finish detail?
                                 if (finishReason == null) {
                                     String content = choice.getJSONObject("delta").getString("content");
                                     if (content != null)
@@ -127,14 +164,38 @@ public class Session {
                     reply = updateHandler.finish();
                 }
 
-                this.conversation.recordMessage(new Message(LocalDateTime.now(), "assistant", reply));
+                if (!Thread.currentThread().isInterrupted()) {
+                    this.conversation.recordMessage(new Message(LocalDateTime.now(), "assistant", reply));
+                }
             } else {
                 throw new RuntimeException("Exception: Status code: " + response.statusCode() + " Body: " + response.body().collect(Collectors.joining("\n")));
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            System.out.println("INTERRUPTED!");
+        } catch (Exception e) {
+            LOGGER.log(System.Logger.Level.DEBUG, "Exception at sending Conversation", e);
+
+            if (Thread.interrupted()) {
+                System.out.println("INTERRUPTED!");
+                updateHandler.cancel();
+            }
+        } finally {
+            String finish = updateHandler.finish();
+            conversationStatistic.add(0, TokenCalculator.tokenCount(finish));
         }
+    }
+
+    public synchronized void clearConversation() {
+        ConversationStatistic.CountPair countPair = conversationStatistic.getAndClear();
+
+        if (this.conversation != null) {
+            try {
+                botContext.userDatabase().flushUsage(userId, GPTUsage.ConversationInput, conversation.model(), countPair.input());
+                botContext.userDatabase().flushUsage(userId, GPTUsage.ConversationOutput, conversation.model(), countPair.output());
+            } catch (SQLException e) {
+                LOGGER.log(System.Logger.Level.WARNING, "Could not write usage for user " + userId
+                        + ". " + countPair, e);
+            }
+        }
+
+        this.conversation = null;
     }
 }

@@ -1,13 +1,13 @@
-package hu.garaba;
+package hu.garaba.tools;
 
-import com.azure.ai.openai.models.ChatRole;
+import hu.garaba.Session;
+import hu.garaba.gpt.Model;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -62,17 +62,18 @@ public class Summarizer {
         return collectOutput(extractorProcess);
     }
 
-    public static Conversation summarizeArticle(OpenAI openAI, String text, Consumer<MessageUpdater.Update> updateFn) {
+    public static void summarizeText(Session session, String text) {
         if (text.isBlank()) {
             throw new IllegalArgumentException("Got empty text to summarize");
         }
 
-        Conversation conversation = new Conversation();
-        conversation.recordMessage(ChatRole.SYSTEM,
-                MessageContent.finished("You are to provide a comprehensive summary of the given text. The summary should cover all the key points and main ideas presented in the original text, while also condensing the information into a concise and easy-to-understand format. Please ensure that the summary includes relevant details and examples that support the main ideas, while avoiding any unnecessary information or repetition. The length of the summary should be appropriate for the length and complexity of the original text, providing a clear and accurate overview without omitting any important information."));
-        conversation.recordMessage(ChatRole.SYSTEM, MessageContent.finished(text));
-
-        openAI.send("summarizer", conversation, updateFn);
-        return conversation;
+        session.initConversation(Model.GPT4, "You are to provide a comprehensive summary of the given text. " +
+                "The summary should cover all the key points and main ideas presented in the original text, " +
+                "while also condensing the information into a concise and easy-to-understand format. " +
+                "Please ensure that the summary includes relevant details and examples that support the main ideas, " +
+                "while avoiding any unnecessary information or repetition. The length of the summary should be " +
+                "appropriate for the length and complexity of the original text, providing a clear " +
+                "and accurate overview without omitting any important information.");
+        session.addMessage(text);
     }
 }

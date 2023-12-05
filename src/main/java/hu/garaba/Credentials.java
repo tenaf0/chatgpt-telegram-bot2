@@ -1,4 +1,4 @@
 package hu.garaba;
 
-public class Credentials {
+public record Credentials(String TELEGRAM_BOT_TOKEN, String OPENAI_API_KEY) {
 }

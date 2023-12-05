@@ -8,7 +8,7 @@
     http://www.liquibase.org/xml/ns/pro http://www.liquibase.org/xml/ns/pro/liquibase-pro-latest.xsd ">
 
     <changeSet id="1" author="Florian Garaba">
-        <createTable tableName="user">
+        <createTable tableName="users">
             <column name="user_id" type="BIGINT">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
@@ -22,15 +22,32 @@
             <column name="month" type="VARCHAR(7)">
                 <constraints nullable="false"/>
             </column>
-            <column name="token_count" type="INT"/>
+            <column name="type" type="VARCHAR">
+                <constraints nullable="false"/>
+            </column>
+            <column name="model" type="VARCHAR">
+                <constraints nullable="true"/>
+            </column>
+            <column name="count" type="INT"/>
             <!-- Composite Primary Key -->
         </createTable>
 
-        <addPrimaryKey tableName="usage" columnNames="user_id,month"/>
+<!--        <addPrimaryKey tableName="usage" columnNames="user_id,month"/>-->
 
         <!-- Foreign Key Constraint -->
+<!--
         <addForeignKeyConstraint constraintName="fk_usage_user"
                                  baseTableName="usage" baseColumnNames="user_id"
-                                 referencedTableName="user" referencedColumnNames="user_id"/>
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
+-->
     </changeSet>
+
+    <changeSet id="2" author="Florian Garaba">
+        <addColumn tableName="users">
+            <column name="admin" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>
