@@ -56,7 +56,7 @@ public class UserDatabase {
             try (var st = connection.prepareStatement("SELECT count FROM USAGE u WHERE " +
                     "user_id = ? AND month = ? AND type = ? AND model = ?")) {
                 st.setLong(1, userId);
-                String month = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+                String month = formatToMonth(LocalDate.now());
                 st.setString(2, month);
                 st.setString(3, usageType.name());
                 st.setString(4, model != null ? model.name() : null);
@@ -94,6 +94,31 @@ public class UserDatabase {
             connection.commit();
         } finally {
             connection.setAutoCommit(true);
+        }
+    }
+
+    public static String formatToMonth(LocalDate date) {
+        return date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+    }
+
+    public String queryUsage(long userId, LocalDate date) throws SQLException {
+        try (var st = connection.prepareStatement("SELECT type, model, count FROM USAGE WHERE user_id = ? AND month = ?")) {
+            st.setLong(1, userId);
+            st.setString(2, formatToMonth(date));
+
+            ResultSet rs = st.executeQuery();
+
+            StringBuilder sb = new StringBuilder();
+            while (rs.next()) {
+                sb.append(rs.getString("type"))
+                        .append(" ")
+                        .append(rs.getString("model"))
+                        .append(" ")
+                        .append(rs.getLong("count"))
+                        .append('\n');
+            }
+
+            return sb.toString();
         }
     }
 

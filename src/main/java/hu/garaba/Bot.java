@@ -1,5 +1,6 @@
 package hu.garaba;
 
+import hu.garaba.db.UserDatabase;
 import hu.garaba.gpt.GPTUsage;
 import hu.garaba.gpt.ImageGeneration;
 import hu.garaba.gpt.Model;
@@ -17,6 +18,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.IOException;
 import java.net.URI;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +114,26 @@ public class Bot extends TelegramLongPollingBot {
             } catch (Exception e) {
                 sendMessage(userId, "Failed to add user: " + e);
             }
+        } else if (text.startsWith("/usage")) {
+            long userId = message.getFrom().getId();
+
+            String usage = null;
+            LocalDate date = LocalDate.now();
+            try {
+                usage = botContext.userDatabase().queryUsage(userId, date);
+            } catch (SQLException e) {
+                RuntimeException exception = new RuntimeException("Error happened during querying usage data for user " + userId, e);
+                LOGGER.log(System.Logger.Level.DEBUG, exception);
+                throw exception;
+            } finally {
+                if (usage != null) {
+                    sendMessage(userId, "Your usage data for month " + UserDatabase.formatToMonth(date) + ":");
+                    sendMessage(userId, usage);
+                } else {
+                    sendMessage(userId, "Error happened during the querying of your usage");
+                }
+            }
+
         } else if (text.startsWith("/modelChange ")) {
             String arg = text.substring("/modelChange ".length()).trim().toLowerCase();
             Model model = switch (arg) {
