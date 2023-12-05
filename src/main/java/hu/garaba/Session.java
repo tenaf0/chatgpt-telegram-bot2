@@ -12,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -68,11 +69,14 @@ public class Session {
     public synchronized void addImageMessage(String text, URI imageURI, long cost) {
         if (conversation == null) {
             initConversation();
-        } else if (conversation.model() != Model.GPT4_Vision) {
+        }
+
+        if (conversation.model() != Model.GPT4_Vision) {
             changeModelOfConversation(Model.GPT4_Vision);
         }
 
-        List<MessageContent> contentList = List.of(new ImageMessageContent(imageURI, cost, ImageMessageContent.Detail.High));
+        List<MessageContent> contentList = new ArrayList<>();
+        contentList.add(new ImageMessageContent(imageURI, cost, ImageMessageContent.Detail.Low));
         if (text != null) {
             contentList.addFirst(new TextMessageContent(text));
         }

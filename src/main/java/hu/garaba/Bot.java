@@ -128,7 +128,9 @@ public class Bot extends TelegramLongPollingBot {
             } finally {
                 if (usage != null) {
                     sendMessage(userId, "Your usage data for month " + UserDatabase.formatToMonth(date) + ":");
-                    sendMessage(userId, usage);
+                    if (usage.isBlank()) {
+                        sendMessage(userId, "No usage");
+                    }
                 } else {
                     sendMessage(userId, "Error happened during the querying of your usage");
                 }
@@ -206,7 +208,7 @@ public class Bot extends TelegramLongPollingBot {
             try {
                 File imageFile = execute(getFileRequest);
 
-                session.addImageMessage(message.getText(), URI.create(imageFile.getFileUrl(botContext.credentials().TELEGRAM_BOT_TOKEN())),
+                session.addImageMessage(message.getCaption(), URI.create(imageFile.getFileUrl(botContext.credentials().TELEGRAM_BOT_TOKEN())),
                         TokenCalculator.image(true, maxSizePhoto.getWidth(), maxSizePhoto.getHeight()));
             } catch (TelegramApiException e) {
                 LOGGER.log(System.Logger.Level.DEBUG, "Handling message with image failed.", e);
