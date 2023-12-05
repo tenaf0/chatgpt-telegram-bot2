@@ -109,7 +109,8 @@ public class Session {
                 requestObject.put("stream", true);
             }
 
-            System.out.println("  -> " + requestObject);
+            LOGGER.log(System.Logger.Level.TRACE, "  -> " + requestObject);
+            LOGGER.log(System.Logger.Level.DEBUG, "Sending request to OpenAI");
 
             HttpRequest request = requestBuilder
                     .POST(HttpRequest.BodyPublishers.ofString(requestObject.toJSONString()))
@@ -125,8 +126,6 @@ public class Session {
                     Iterator<String> iterator = response.body().iterator();
                     while (iterator.hasNext()) {
                         String l = iterator.next();
-
-                        System.out.println(l);
 
                         if (l.startsWith("data:")) {
                             if (l.equals("data: [DONE]")) {
@@ -174,7 +173,7 @@ public class Session {
             LOGGER.log(System.Logger.Level.DEBUG, "Exception at sending Conversation", e);
 
             if (Thread.interrupted()) {
-                System.out.println("INTERRUPTED!");
+                LOGGER.log(System.Logger.Level.DEBUG, "Interrupted");
                 updateHandler.cancel();
             }
         } finally {
