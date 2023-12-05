@@ -110,7 +110,7 @@ public class Session {
             }
 
             LOGGER.log(System.Logger.Level.TRACE, "  -> " + requestObject);
-            LOGGER.log(System.Logger.Level.DEBUG, "Sending request to OpenAI");
+            LOGGER.log(System.Logger.Level.DEBUG, "Sending " + conversation.model() + " request to OpenAI");
 
             HttpRequest request = requestBuilder
                     .POST(HttpRequest.BodyPublishers.ofString(requestObject.toJSONString()))
