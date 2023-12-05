@@ -16,8 +16,12 @@ public class Main {
     private static final String OPENAI_API_KEY = Objects.requireNonNull(System.getenv("OPENAI_API_KEY"));
 
     public static void main(String[] args) throws Exception {
+        if (args.length != 1) {
+            throw new IllegalArgumentException("A path to the db file is required!");
+        }
+
         var executorService = Executors.newVirtualThreadPerTaskExecutor();
-        UserDatabase userDatabase = new UserDatabase(Path.of("liquibase/bot.db"));
+        UserDatabase userDatabase = new UserDatabase(Path.of(args[0]));
 
         TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
 
