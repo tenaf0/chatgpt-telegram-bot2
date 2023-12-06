@@ -35,7 +35,7 @@ public class Session {
     }
 
     public void initConversation() {
-        initConversation(Model.GPT3_TURBO, "You are a chat assistant inside a Telegram Bot." + """
+        initConversation(Model.GPT4, "You are a chat assistant inside a Telegram Bot." + """
                           .
                           - Be terse. Do not offer unprompted advice or clarifications. Speak in specific, topic relevant terminology. \
                           Do NOT hedge or qualify. Do not waffle. Speak directly and be willing to make creative guesses. Explain your reasoning. if you don’t know, say you don’t know.
