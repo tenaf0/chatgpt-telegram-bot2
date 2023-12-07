@@ -1,10 +1,7 @@
 package hu.garaba;
 
 import hu.garaba.db.UserDatabase;
-import hu.garaba.gpt.GPTUsage;
-import hu.garaba.gpt.ImageGeneration;
-import hu.garaba.gpt.Model;
-import hu.garaba.gpt.TokenCalculator;
+import hu.garaba.gpt.*;
 import hu.garaba.tools.Summarizer;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
@@ -176,9 +173,18 @@ public class Bot extends TelegramLongPollingBot {
                 }
             }
         } else if (text.startsWith("/generateImage ")) { // TODO: Handle if without ' '
-            boolean hd = text.contains("#hd");
-            String url = ImageGeneration.generateImage(botContext, text.substring("/generateImage ".length()), 1, hd);
             long userId = message.getFrom().getId();
+
+            boolean hd = text.contains("#hd");
+            String url;
+            try {
+                url = ImageGeneration.generateImage(botContext, text.substring("/generateImage ".length()), 1, hd);
+            } catch (GPTException e) {
+                sendMessage(userId, e.userMessage());
+                LOGGER.log(System.Logger.Level.DEBUG, e);
+                throw new RuntimeException(e);
+            }
+
             try {
                 botContext.userDatabase().flushUsage(userId, GPTUsage.ImageGeneration, Model.DALL_E_3, 1);
             } catch (SQLException e) {

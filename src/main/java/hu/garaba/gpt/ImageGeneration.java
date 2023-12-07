@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ImageGeneration {
-    public static String generateImage(BotContext botContext, String prompt, int n, boolean hd) {
+    public static String generateImage(BotContext botContext, String prompt, int n, boolean hd) throws GPTException {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create("https://api.openai.com/v1/images/generations"))
                 .header("Content-Type", "application/json")
@@ -43,7 +43,18 @@ public class ImageGeneration {
                 }
                 return data.getString("url");
             } else {
-                throw new RuntimeException("Status code: " + response.statusCode() + " body: " + response.body());
+                String userErrorMessage = "The OpenAI API responded with an error";
+
+                JSONObject jsonObject = JSON.parseObject(response.body());
+                JSONObject error = jsonObject.getJSONObject("error");
+                if (error != null) {
+                    String code = error.getString("code");
+                    if (code != null && code.equals("content_policy_violation")) {
+                        userErrorMessage = "Content policy violation";
+                    }
+                }
+
+                throw new GPTException("Status code: " + response.statusCode() + " body: " + response.body(), userErrorMessage);
             }
         } catch (IOException | InterruptedException e) {
             throw new RuntimeException();
