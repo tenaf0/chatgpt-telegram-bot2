@@ -127,6 +127,8 @@ public class Bot extends TelegramLongPollingBot {
                     sendMessage(userId, "Your usage data for month " + UserDatabase.formatToMonth(date) + ":");
                     if (usage.isBlank()) {
                         sendMessage(userId, "No usage");
+                    } else {
+                        sendMessage(userId, usage);
                     }
                 } else {
                     sendMessage(userId, "Error happened during the querying of your usage");

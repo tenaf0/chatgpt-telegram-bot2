@@ -25,7 +25,7 @@ public class Session {
     private final BotContext botContext;
     private final long userId;
     private boolean stream = true;
-    private Conversation conversation;
+    private volatile Conversation conversation;
     private final ConversationStatistic conversationStatistic = new ConversationStatistic();
     private final AtomicReference<Thread> thread = new AtomicReference<>();
 
