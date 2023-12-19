@@ -8,6 +8,7 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
+import org.telegram.telegrambots.meta.api.methods.send.SendVoice;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.*;
@@ -203,6 +204,25 @@ public class Bot extends TelegramLongPollingBot {
             try {
                 execute(sendPhoto);
             } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+        } else if (text.startsWith("/speak ")) {
+            long userId = message.getFrom().getId();
+
+            String userText = text.substring("/speak ".length());
+            Path path = Whisper.speakText(botContext, userText);
+            SendVoice sendVoice = SendVoice.builder()
+                    .chatId(userId)
+                    .voice(new InputFile(path.toFile()))
+                    .caption(userText)
+                    .build();
+
+            // TODO: Log usage
+
+            try {
+                execute(sendVoice);
+            } catch (TelegramApiException e) {
+                sendMessage(userId, "Failure during voice generation.");
                 throw new RuntimeException(e);
             }
         }

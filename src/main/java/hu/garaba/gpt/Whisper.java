@@ -11,7 +11,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Whisper {
     private static final System.Logger LOGGER = System.getLogger(Whisper.class.getCanonicalName());
@@ -47,6 +50,36 @@ public class Whisper {
         } catch (IOException | InterruptedException e) {
             LOGGER.log(System.Logger.Level.ERROR, "Voice transcription failed", e);
             throw new RuntimeException(e);
+        }
+    }
+
+    public static Path speakText(BotContext botContext, String text) {
+        try {
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.openai.com/v1/audio/speech"))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + botContext.credentials().OPENAI_API_KEY());
+
+            Map<String, Object> parameterMap = new HashMap<>(Map.of(
+                    "model", "tts-1",
+                    "input", text,
+                    "voice", "echo"
+            ));
+
+            HttpRequest request = requestBuilder
+                    .POST(HttpRequest.BodyPublishers.ofString(new JSONObject(parameterMap).toJSONString()))
+                    .build();
+
+            HttpResponse<Path> response = botContext.httpClient().send(request, HttpResponse.BodyHandlers.ofFile(Files.createTempFile("generated-voice", ".mp3")));
+            if (response.statusCode() == 200) {
+                return response.body();
+            } else {
+                throw new RuntimeException("Error during voice generation request. Status code: " + response.statusCode() + " " + response);
+            }
+        } catch (IOException | InterruptedException e) {
+            String message = "Failed generating voice";
+            LOGGER.log(System.Logger.Level.ERROR, message, e);
+            throw new RuntimeException(message, e);
         }
     }
 }
