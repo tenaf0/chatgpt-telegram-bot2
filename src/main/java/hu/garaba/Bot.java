@@ -3,6 +3,7 @@ package hu.garaba;
 import hu.garaba.db.UserDatabase;
 import hu.garaba.gpt.*;
 import hu.garaba.tools.Summarizer;
+import hu.garaba.util.FileDownloader;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -14,6 +15,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -220,6 +223,33 @@ public class Bot extends TelegramLongPollingBot {
                         TokenCalculator.image(true, maxSizePhoto.getWidth(), maxSizePhoto.getHeight()));
             } catch (TelegramApiException e) {
                 LOGGER.log(System.Logger.Level.DEBUG, "Handling message with image failed.", e);
+            }
+        } else if (message.hasVoice()) {
+            Voice voice = message.getVoice();
+
+            GetFile getFileRequest = new GetFile(voice.getFileId());
+            Path voiceFilePath = null;
+            try {
+                File voiceFile = execute(getFileRequest);
+
+                URI uri = URI.create(voiceFile.getFileUrl(botContext.credentials().TELEGRAM_BOT_TOKEN()));
+                voiceFilePath = FileDownloader.downloadFile(uri);
+
+                String transcribed = Whisper.transcribeVoice(botContext, voiceFilePath);
+                botContext.userDatabase().flushUsage(user.getId(), GPTUsage.VoiceTranscription, Model.WHISPER_1, voiceFile.getFileSize() / 1000);
+
+                session.addMessage(transcribed);
+            } catch (Exception e) {
+                LOGGER.log(System.Logger.Level.DEBUG, "Handling message with voice message failed.", e);
+                sendMessage(user.getId(), "Could not transcribe voice message");
+            } finally {
+                if (voiceFilePath != null) {
+                    try {
+                        Files.delete(voiceFilePath);
+                    } catch (IOException e) {
+                        LOGGER.log(System.Logger.Level.ERROR, "Failed to delete temporary voice file " + voiceFilePath, e);
+                    }
+                }
             }
         } else {
             session.addMessage(message.getText());

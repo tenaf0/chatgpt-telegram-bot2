@@ -8,8 +8,11 @@ import java.util.List;
 import java.util.Map;
 
 public record Message(LocalDateTime dateTime, String role, List<MessageContent> contentList) {
-    public Message(LocalDateTime dateTime, String role, String text) {
-        this(dateTime, role, List.of(new TextMessageContent(text)));
+    public static Message createMessage(LocalDateTime dateTime, String role, String text) {
+        if (text == null)
+            throw new IllegalArgumentException("`text` can't be null");
+
+        return new Message(dateTime, role, List.of(new TextMessageContent(text)));
     }
 
     public long tokenCount() {

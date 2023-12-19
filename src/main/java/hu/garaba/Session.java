@@ -48,7 +48,7 @@ public class Session {
         clearConversation();
 
         this.conversation = new Conversation(userId, model);
-        conversation.recordMessage(new Message(LocalDateTime.now(), "system", prompt));
+        conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "system", prompt));
     }
 
     public synchronized void changeModelOfConversation(Model newModel) {
@@ -63,7 +63,7 @@ public class Session {
             initConversation();
         }
 
-        conversation.recordMessage(new Message(LocalDateTime.now(), "user", text));
+        conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "user", text));
     }
 
     public synchronized void addImageMessage(String text, URI imageURI, long cost) {
@@ -168,7 +168,7 @@ public class Session {
                 }
 
                 if (!Thread.currentThread().isInterrupted()) {
-                    this.conversation.recordMessage(new Message(LocalDateTime.now(), "assistant", reply));
+                    this.conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "assistant", reply));
                 }
             } else {
                 throw new RuntimeException("Exception: Status code: " + response.statusCode() + " Body: " + response.body().collect(Collectors.joining("\n")));
@@ -187,6 +187,8 @@ public class Session {
     }
 
     public synchronized void clearConversation() {
+        // TODO: Make it thread interrupt-safe
+
         ConversationStatistic.CountPair countPair = conversationStatistic.getAndClear();
 
         if (this.conversation != null) {
