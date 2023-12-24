@@ -12,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -28,6 +29,8 @@ public class Session {
     private volatile Conversation conversation;
     private final ConversationStatistic conversationStatistic = new ConversationStatistic();
     private final AtomicReference<Thread> thread = new AtomicReference<>();
+    private boolean isCleared = false;
+    private LocalTime lastInteractedAt = LocalTime.now();
 
     public Session(BotContext botContext, long userId) {
         this.botContext = botContext;
@@ -46,6 +49,7 @@ public class Session {
 
     public synchronized void initConversation(Model model, String prompt) {
         clearConversation();
+        isCleared = false;
 
         this.conversation = new Conversation(userId, model);
         conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "system", prompt));
@@ -54,20 +58,30 @@ public class Session {
     public synchronized void changeModelOfConversation(Model newModel) {
         Conversation prevConversation = this.conversation;
         clearConversation();
+        isCleared = false;
 
         this.conversation = new Conversation(userId, newModel, prevConversation);
     }
 
-    public synchronized void addMessage(String text) {
-        if (conversation == null) {
+    public synchronized boolean addMessage(String text) {
+        updateLastInteractionTime();
+
+        boolean newConversation = false;
+        if (isConversationCleared()) {
+            newConversation = true;
             initConversation();
         }
 
         conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "user", text));
+        return newConversation;
     }
 
-    public synchronized void addImageMessage(String text, URI imageURI, long cost) {
-        if (conversation == null) {
+    public synchronized boolean addImageMessage(String text, URI imageURI, long cost) {
+        updateLastInteractionTime();
+
+        boolean newConversation = false;
+        if (isConversationCleared()) {
+            newConversation = true;
             initConversation();
         }
 
@@ -81,6 +95,8 @@ public class Session {
             contentList.addFirst(new TextMessageContent(text));
         }
         conversation.recordMessage(new Message(LocalDateTime.now(), "user", contentList));
+
+        return newConversation;
     }
     public interface MessageUpdateHandler {
         void start();
@@ -94,6 +110,8 @@ public class Session {
         void cancel();
     }
     public void sendConversation(MessageUpdateHandler updateHandler) {
+        updateLastInteractionTime();
+
         Thread t = thread.get();
         if (t != null) {
             t.interrupt();
@@ -188,6 +206,7 @@ public class Session {
 
     public synchronized void clearConversation() {
         // TODO: Make it thread interrupt-safe
+        updateLastInteractionTime();
 
         ConversationStatistic.CountPair countPair = conversationStatistic.getAndClear();
 
@@ -201,6 +220,22 @@ public class Session {
             }
         }
 
-        this.conversation = null;
+        isCleared = true;
+    }
+
+    public boolean shouldClear(LocalTime cutoffTime) {
+        return !isConversationCleared() && lastInteractedAt.isBefore(cutoffTime);
+    }
+
+    public void resetClear() {
+        isCleared = false;
+    }
+
+    private boolean isConversationCleared() {
+        return isCleared || conversation == null;
+    }
+
+    private void updateLastInteractionTime() {
+        this.lastInteractedAt = LocalTime.now();
     }
 }

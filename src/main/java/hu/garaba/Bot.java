@@ -20,16 +20,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 public class Bot extends TelegramLongPollingBot {
     private static final System.Logger LOGGER = System.getLogger(Bot.class.getCanonicalName());
 
     private final BotContext botContext;
+    private final ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
     private final Map<Long, Session> sessionMap = new ConcurrentHashMap<>();
 
     public Bot(BotContext botContext) {
@@ -55,6 +60,25 @@ public class Bot extends TelegramLongPollingBot {
                 }
             });
         }
+
+        int oldInteractionClearDate = 20;
+
+        scheduledExecutor.scheduleAtFixedRate(() -> {
+            LOGGER.log(System.Logger.Level.INFO, "Clearing conversations");
+            LocalTime cutoffDate = LocalTime.now().minusMinutes(oldInteractionClearDate);
+
+            var sessionPairs = sessionMap.entrySet();
+
+            var iter = sessionPairs.iterator();
+            while (iter.hasNext()) {
+                Map.Entry<Long, Session> sessionPair = iter.next();
+                if (sessionPair.getValue().shouldClear(cutoffDate)) {
+                    sessionPair.getValue().clearConversation();
+                    LOGGER.log(System.Logger.Level.INFO, "Clearing conversation of " + sessionPair.getKey());
+//                    iter.remove();
+                }
+            }
+        }, oldInteractionClearDate, oldInteractionClearDate, TimeUnit.MINUTES);
     }
 
     @Override
@@ -95,8 +119,10 @@ public class Bot extends TelegramLongPollingBot {
         String text = message.getText();
 
         if (text.startsWith("/clear")) {
-            session.initConversation();
+            session.clearConversation();
             sendMessage(message.getFrom().getId(), "Conversation cleared");
+        } else if (text.startsWith("/continue")) {
+            session.resetClear();
         } else if (text.startsWith("/addUser ")) {
             long userId = message.getFrom().getId();
             if (!botContext.userDatabase().isAdmin(userId)) {
@@ -239,8 +265,11 @@ public class Bot extends TelegramLongPollingBot {
             try {
                 File imageFile = execute(getFileRequest);
 
-                session.addImageMessage(message.getCaption(), URI.create(imageFile.getFileUrl(botContext.credentials().TELEGRAM_BOT_TOKEN())),
+                boolean b = session.addImageMessage(message.getCaption(), URI.create(imageFile.getFileUrl(botContext.credentials().TELEGRAM_BOT_TOKEN())),
                         TokenCalculator.image(true, maxSizePhoto.getWidth(), maxSizePhoto.getHeight()));
+                if (b) {
+                    sendMessage(user.getId(), "Conversation cleared");
+                }
             } catch (TelegramApiException e) {
                 LOGGER.log(System.Logger.Level.DEBUG, "Handling message with image failed.", e);
             }
@@ -258,7 +287,7 @@ public class Bot extends TelegramLongPollingBot {
                 String transcribed = Whisper.transcribeVoice(botContext, voiceFilePath);
                 botContext.userDatabase().flushUsage(user.getId(), GPTUsage.VoiceTranscription, Model.WHISPER_1, voiceFile.getFileSize() / 1000);
 
-                session.addMessage(transcribed);
+                addSessionMessage(user.getId(), session, transcribed);
             } catch (Exception e) {
                 LOGGER.log(System.Logger.Level.DEBUG, "Handling message with voice message failed.", e);
                 sendMessage(user.getId(), "Could not transcribe voice message");
@@ -272,10 +301,17 @@ public class Bot extends TelegramLongPollingBot {
                 }
             }
         } else {
-            session.addMessage(message.getText());
+            addSessionMessage(user.getId(), session, message.getText());
         }
 
         session.sendConversation(new MessageUpdateHandler(user.getId()));
+    }
+
+    private void addSessionMessage(long userId, Session session, String text) {
+        boolean newConversation = session.addMessage(text);
+        if (newConversation) {
+            sendMessage(userId, "Conversation cleared");
+        }
     }
 
     private class MessageUpdateHandler implements Session.MessageUpdateHandler {
