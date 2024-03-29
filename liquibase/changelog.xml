@@ -50,4 +50,35 @@
         </addColumn>
     </changeSet>
 
+    <changeSet id="3" author="Florian Garaba">
+        <createTable tableName="costs">
+            <column name="month" type="VARCHAR(7)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type" type="VARCHAR">
+                <constraints nullable="false"/>
+            </column>
+            <column name="model" type="VARCHAR">
+                <constraints nullable="true"/>
+            </column>
+            <column name="price" type="INT"> <!-- The real price equals price * 10^exp -->
+                <constraints nullable="false"/>
+            </column>
+            <column name="exp" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createTable tableName="invoice">
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="month" type="VARCHAR(7)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sum" type="DECIMAL(5,2)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
 </databaseChangeLog>

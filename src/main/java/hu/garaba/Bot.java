@@ -1,6 +1,5 @@
 package hu.garaba;
 
-import hu.garaba.db.UserDatabase;
 import hu.garaba.gpt.*;
 import hu.garaba.tools.Summarizer;
 import hu.garaba.util.FileDownloader;
@@ -19,11 +18,11 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -145,24 +144,14 @@ public class Bot extends TelegramLongPollingBot {
             long userId = message.getFrom().getId();
 
             String usage = null;
-            LocalDate date = LocalDate.now();
             try {
-                usage = botContext.userDatabase().queryUsage(userId, date);
+                usage = botContext.userDatabase().queryUnpaidUsage(userId);
             } catch (SQLException e) {
                 RuntimeException exception = new RuntimeException("Error happened during querying usage data for user " + userId, e);
                 LOGGER.log(System.Logger.Level.DEBUG, exception);
                 throw exception;
             } finally {
-                if (usage != null) {
-                    sendMessage(userId, "Your usage data for month " + UserDatabase.formatToMonth(date) + ":");
-                    if (usage.isBlank()) {
-                        sendMessage(userId, "No usage");
-                    } else {
-                        sendMessage(userId, usage);
-                    }
-                } else {
-                    sendMessage(userId, "Error happened during the querying of your usage");
-                }
+                sendMessage(userId, Objects.requireNonNullElse(usage, "Error happened during the querying of your usage"));
             }
 
         } else if (text.startsWith("/modelChange ")) {
