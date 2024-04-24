@@ -188,7 +188,7 @@ public class Bot extends TelegramLongPollingBot {
 
                     Summarizer.summarizeText(session, textToSummarize);
                     session.sendConversation(new MessageUpdateHandler(userId));
-                } catch (IOException e) {
+                } catch (Exception e) {
                     LOGGER.log(System.Logger.Level.DEBUG, "/summarize command failed", e);
                     sendMessage(userId, "/summarize command failed");
                 }
@@ -329,7 +329,7 @@ public class Bot extends TelegramLongPollingBot {
             newChars += appendText.length();
             textBuffer.append(appendText);
 
-            if (newChars > 26) {
+            if (newChars > 60) {
                 newChars = 0;
                 editMessage(userId, messageId, textBuffer.toString());
             }

@@ -63,8 +63,8 @@ public class Summarizer {
     }
 
     public static void summarizeText(Session session, String text) {
-        if (text.isBlank()) {
-            throw new IllegalArgumentException("Got empty text to summarize");
+        if (text == null || text.isBlank()) {
+            throw new IllegalArgumentException("Got no text to summarize");
         }
 
         session.initConversation(Model.GPT4, "You are to provide a comprehensive summary of the given text. " +
