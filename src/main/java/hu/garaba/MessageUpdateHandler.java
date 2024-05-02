@@ -1,6 +1,8 @@
 package hu.garaba;
 
 public class MessageUpdateHandler implements Session.MessageUpdateHandler {
+    public static final int EDIT_THRESHOLD = 80;
+
     private final long userId;
     private final Messaging messaging;
     private long messageId = -1;
@@ -28,7 +30,7 @@ public class MessageUpdateHandler implements Session.MessageUpdateHandler {
         newChars += appendText.length();
         textBuffer.append(appendText);
 
-        if (newChars > 60) {
+        if (newChars > EDIT_THRESHOLD) {
             newChars = 0;
             messaging.editMessage(userId, messageId, textBuffer.toString());
         }
