@@ -22,7 +22,9 @@ public class Conversation {
     public Conversation(long userId, Model model, Conversation conversation) {
         this.userId = userId;
         this.model = model;
-        this.messages.addAll(conversation.messages);
+
+        if (conversation != null)
+            this.messages.addAll(conversation.messages);
     }
 
     public Model model() {
