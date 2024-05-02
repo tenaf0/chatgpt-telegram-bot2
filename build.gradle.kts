@@ -16,13 +16,13 @@ repositories {
 dependencies {
     implementation("jakarta.annotation:jakarta.annotation-api:3.0.0-M1")
 
-    runtimeOnly("org.xerial:sqlite-jdbc:3.45.2.0")
+    runtimeOnly("org.xerial:sqlite-jdbc:3.45.3.0")
 
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:3.0.0-alpha1")
     implementation("org.apache.logging.log4j:log4j-core:3.0.0-alpha1")
     implementation("org.apache.logging.log4j:log4j-jpl:3.0.0-alpha1")
 
-    implementation("com.alibaba:fastjson:2.0.48")
+    implementation("com.alibaba:fastjson:2.0.49")
     implementation("org.telegram:telegrambots:6.9.7.1")
 
     implementation("com.github.mizosoft.methanol:methanol:1.7.0")
