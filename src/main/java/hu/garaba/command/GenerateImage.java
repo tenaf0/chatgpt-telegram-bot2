@@ -1,4 +1,4 @@
-package command;
+package hu.garaba.command;
 
 import hu.garaba.BotContext;
 import hu.garaba.Messaging;
@@ -25,7 +25,7 @@ public class GenerateImage implements Command {
         boolean hd = text.contains("#hd");
         String url;
         try {
-            url = ImageGeneration.generateImage(context, text, 1, hd);
+            url = ImageGeneration.generateImage(context, text.substring("/generateImage ".length()), 1, hd);
         } catch (GPTException e) {
             messaging.sendMessage(userId, e.userMessage());
             LOGGER.log(System.Logger.Level.DEBUG, e);

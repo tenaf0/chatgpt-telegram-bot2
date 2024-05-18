@@ -1,4 +1,4 @@
-package command;
+package hu.garaba.command;
 
 import hu.garaba.BotContext;
 import hu.garaba.Session;

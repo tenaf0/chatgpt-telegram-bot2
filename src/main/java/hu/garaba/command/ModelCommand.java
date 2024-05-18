@@ -1,4 +1,4 @@
-package command;
+package hu.garaba.command;
 
 import hu.garaba.BotContext;
 import hu.garaba.Messaging;
@@ -12,7 +12,7 @@ public class ModelCommand implements Command {
         String text = message.getText();
         Messaging messaging = context.messaging();
 
-        String arg = text.trim().toLowerCase();
+        String arg = text.substring("/model".length()).trim().toLowerCase();
         if (arg.isEmpty()) {
             messaging.sendMessage(message.getFrom().getId(), "The current model is " + session.getModel());
             return;

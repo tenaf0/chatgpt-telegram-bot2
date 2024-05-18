@@ -1,6 +1,6 @@
 package hu.garaba;
 
-import command.*;
+import hu.garaba.command.*;
 import hu.garaba.gpt.GPTUsage;
 import hu.garaba.gpt.Model;
 import hu.garaba.gpt.TokenCalculator;
