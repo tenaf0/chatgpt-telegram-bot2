@@ -85,8 +85,8 @@ public class Session {
             initConversation();
         }
 
-        if (conversation.model() != Model.GPT4_Vision) {
-            changeModelOfConversation(Model.GPT4_Vision);
+        if (conversation.model() != Model.GPT4) {
+            changeModelOfConversation(Model.GPT4);
         }
 
         List<MessageContent> contentList = new ArrayList<>();
