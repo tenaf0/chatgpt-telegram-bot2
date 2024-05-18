@@ -6,13 +6,18 @@ import hu.garaba.Session;
 import hu.garaba.gpt.Model;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
-public class ModelChangeCommand implements Command {
+public class ModelCommand implements Command {
     @Override
     public void action(BotContext context, Session session, Message message) {
         String text = message.getText();
         Messaging messaging = context.messaging();
 
-        String arg = text.substring("/modelChange ".length()).trim().toLowerCase();
+        String arg = text.trim().toLowerCase();
+        if (arg.isEmpty()) {
+            messaging.sendMessage(message.getFrom().getId(), "The current model is " + session.getModel());
+            return;
+        }
+
         Model model = switch (arg) {
             case "gpt4" -> Model.GPT4;
             case "gpt3" -> Model.GPT3_TURBO;

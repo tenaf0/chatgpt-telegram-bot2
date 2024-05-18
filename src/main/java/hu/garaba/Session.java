@@ -55,6 +55,14 @@ public class Session {
         conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "system", prompt));
     }
 
+    public Model getModel() {
+        if (this.conversation != null) {
+            return this.conversation.model();
+        } else {
+            return null;
+        }
+    }
+
     public synchronized void changeModelOfConversation(Model newModel) {
         Conversation prevConversation = this.conversation;
         clearConversation();

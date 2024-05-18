@@ -64,7 +64,7 @@ public class BotCommunicationHandler {
         commandHandler.put("continue", (botContext, session, message) -> session.resetClear());
         commandHandler.put("addUser", new AddUserCommand());
         commandHandler.put("usage", new UsageCommand());
-        commandHandler.put("modelChange", new ModelChangeCommand());
+        commandHandler.put("model", new ModelCommand());
         commandHandler.put("summarize", new SummarizeCommand());
     }
 
