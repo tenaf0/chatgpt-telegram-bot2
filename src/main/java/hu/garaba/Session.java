@@ -25,7 +25,7 @@ public class Session {
 
     private final BotContext botContext;
     private final long userId;
-    private boolean stream = true;
+    private boolean stream = false;
     private volatile Conversation conversation;
     private final ConversationStatistic conversationStatistic = new ConversationStatistic();
     private final AtomicReference<Thread> thread = new AtomicReference<>();
@@ -52,7 +52,8 @@ public class Session {
         isCleared = false;
 
         this.conversation = new Conversation(userId, model);
-        conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "system", prompt));
+        // TODO
+        conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "assistant", prompt));
     }
 
     public Model getModel() {
@@ -134,7 +135,7 @@ public class Session {
                     .header("Authorization", "Bearer " + botContext.credentials().OPENAI_API_KEY());
 
             JSONObject requestObject = this.conversation.toJSONObject();
-            requestObject.put("max_tokens", 2000);
+            requestObject.put("max_completion_tokens", 3000);
             if (stream) {
                 requestObject.put("stream", true);
             }

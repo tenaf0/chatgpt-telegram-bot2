@@ -1,7 +1,7 @@
 package hu.garaba;
 
 public class MessageUpdateHandler implements Session.MessageUpdateHandler {
-    public static final int EDIT_THRESHOLD = 350;
+    public static final int EDIT_THRESHOLD = 1500;
 
     private final long userId;
     private final Messaging messaging;

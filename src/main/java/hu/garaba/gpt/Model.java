@@ -1,6 +1,8 @@
 package hu.garaba.gpt;
 
 public enum Model {
+    O1_Preview("o1-preview", true),
+    O1("o1-mini", true),
     GPT4("gpt-4o-2024-05-13", true),
     GPT3_TURBO("gpt-3.5-turbo-0125", true),
     DALL_E_3("dall-e-3", false),

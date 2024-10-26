@@ -19,6 +19,8 @@ public class ModelCommand implements Command {
         }
 
         Model model = switch (arg) {
+            case "gpto1" -> Model.O1;
+            case "gpto1prev" -> Model.O1_Preview;
             case "gpt4" -> Model.GPT4;
             case "gpt3" -> Model.GPT3_TURBO;
             default -> null;
