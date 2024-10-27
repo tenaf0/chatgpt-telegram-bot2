@@ -9,6 +9,7 @@ import org.telegram.telegrambots.meta.api.objects.File;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 
 import java.util.Map;
 import java.util.Set;
@@ -114,7 +115,18 @@ public class Bot extends TelegramLongPollingBot {
                         .text(newText)
                         .build();
                 execute(editRequest);
-            } catch (TelegramApiException e) {
+            } catch (TelegramApiRequestException e) {
+                if (e.getApiResponse() != null && e.getApiResponse().contains("MESSAGE_TOO_LONG")) {
+                    editMessage(userId, messageId, newText.substring(0, 4096));
+                    int sent = 4096;
+                    while (sent < newText.length()) {
+                        int endIndex = Math.min(sent + 4096, newText.length());
+                        sendMessage(userId, newText.substring(sent, endIndex));
+                        sent = endIndex;
+                    }
+                }
+            }
+            catch (TelegramApiException e) {
                 LOGGER.log(System.Logger.Level.DEBUG,
                         "Failure at editing message with user id: " + userId + ", message id: " + messageId, e);
             }
