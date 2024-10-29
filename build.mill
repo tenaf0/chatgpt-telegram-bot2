@@ -1,0 +1,73 @@
+package build
+
+import mill._
+import javalib._
+import os.{Path, RelPath}
+
+import scala.collection.compat.immutable.ArraySeq
+
+object `package` extends RootModule with MavenModule {
+  override def ivyDeps: T[Agg[Dep]] = Agg(
+    ivy"jakarta.annotation:jakarta.annotation-api:3.0.0-M1",
+    ivy"org.apache.logging.log4j:log4j-slf4j2-impl:3.0.0-alpha1",
+    ivy"org.apache.logging.log4j:log4j-core:3.0.0-alpha1",
+    ivy"org.apache.logging.log4j:log4j-jpl:3.0.0-alpha1",
+
+    ivy"com.alibaba:fastjson:2.0.53",
+    ivy"org.telegram:telegrambots:6.9.7.1",
+
+    ivy"com.github.mizosoft.methanol:methanol:1.7.0",
+  )
+
+  override def runIvyDeps: T[Agg[Dep]] = Agg(
+    ivy"org.xerial:sqlite-jdbc:3.47.0.0"
+  )
+
+  override def mainClass: T[Option[String]] = Some("hu.garaba.Main")
+
+  object test extends MavenModuleTests with TestModule.Junit5 {
+    override def ivyDeps: T[Agg[Dep]] = super.ivyDeps() ++ Agg(
+      ivy"org.junit.jupiter:junit-jupiter:5.11.3",
+      ivy"org.mockito:mockito-junit-jupiter:5.11.0"
+    )
+  }
+
+  object liquibase extends Module {
+    private def tryList(path: Path): Seq[Path] = try {
+      os.list(path)
+    } catch {
+      case _: Throwable => Seq.empty
+    }
+
+    def getOS = Task.Input {
+      System.getProperty("os.name")
+    }
+
+    def initDatabase(name: String) = Task.Command {
+      val isWindows = getOS().contains("Windows")
+
+      val envMap = T.ctx().env
+      val pathEnv = envMap.get(if (isWindows) "Path" else "PATH")
+      val path: Seq[Path] = pathEnv match {
+        case Some(pathList) => ArraySeq.unsafeWrapArray(pathList.split((if (isWindows) ';' else ':'): Char)).map(Path(_))
+        case None => Seq.empty
+      }
+
+      val executable = try {
+        path.flatMap(tryList)
+          .find(_.endsWith(RelPath(if (isWindows) "liquibase.bat" else "liquibase"))).get
+      } catch {
+        case _: NoSuchElementException => throw new IllegalStateException("liquibase binary has to be installed")
+      }
+
+      T.ctx().log.info(s"Running with $executable")
+
+      val command = Seq(executable.toString(), "update", "--changelog-file", "liquibase/changelog.xml", "--url", s"jdbc:sqlite:$name")
+      T.ctx().log.info(s"Running command $command")
+
+      os.proc(command)
+        .call(cwd = T.ctx().workspace)
+    }
+  }
+}
+
