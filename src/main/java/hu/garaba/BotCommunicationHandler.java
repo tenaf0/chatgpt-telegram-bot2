@@ -278,6 +278,35 @@ public class BotCommunicationHandler {
                     }
                 }
             }
+        } else if (message.hasDocument()) {
+            Document document = message.getDocument();
+
+            GetFile getFileRequest = new GetFile(document.getFileId());
+            Path documentPath = null;
+            try {
+                File documentFile = botContext.messaging().getFileRequest(getFileRequest);
+
+                URI uri = URI.create(documentFile.getFileUrl(botContext.credentials().TELEGRAM_BOT_TOKEN()));
+                documentPath = FileDownloader.downloadFile(uri);
+
+                String text = Files.readString(documentPath);
+                if (text.length() > 128_000) { // Max tokens
+                    throw new IllegalStateException("Too big file, no model could handle it");
+                }
+
+                addSessionMessage(user.getId(), session, text);
+            } catch (Exception e) {
+                LOGGER.log(System.Logger.Level.DEBUG, "Handling message with document failed.", e);
+                botContext.messaging().sendMessage(user.getId(), "Could not read the sent file");
+            } finally {
+                if (documentPath != null) {
+                    try {
+                        Files.delete(documentPath);
+                    } catch (IOException e) {
+                        LOGGER.log(System.Logger.Level.ERROR, "Failed to delete temporary document " + documentPath, e);
+                    }
+                }
+            }
         } else {
             addSessionMessage(user.getId(), session, message.getText());
         }
