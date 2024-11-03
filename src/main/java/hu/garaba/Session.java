@@ -198,7 +198,8 @@ public class Session {
                     this.conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "assistant", reply));
                 }
             } else {
-                throw new RuntimeException("Exception: Status code: " + response.statusCode() + " Body: " + response.body().collect(Collectors.joining("\n")));
+                throw new RuntimeException("Exception: Status code: " + response.statusCode() + " Body: " + response.body().collect(Collectors.joining("\n"))
+                        + "\nSent request was: " + requestObject);
             }
         } catch (Exception e) {
             LOGGER.log(System.Logger.Level.DEBUG, "Exception at sending Conversation", e);
