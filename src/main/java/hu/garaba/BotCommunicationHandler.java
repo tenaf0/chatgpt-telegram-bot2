@@ -60,12 +60,17 @@ public class BotCommunicationHandler {
     }
 
     private void registerCommandHandlers() {
+        commandHandler.put("list", (context, session, message) -> {
+            String listOfCommands = String.join(", ", commandHandler.keySet());
+            context.messaging().sendMessage(message.getFrom().getId(), "The available commands are: " + listOfCommands);
+        });
         commandHandler.put("clear", new ClearCommand());
         commandHandler.put("continue", (botContext, session, message) -> session.resetClear());
         commandHandler.put("addUser", new AddUserCommand());
         commandHandler.put("usage", new UsageCommand());
         commandHandler.put("model", new ModelCommand());
         commandHandler.put("summarize", new SummarizeCommand());
+        commandHandler.put("generateImage", new GenerateImage());
     }
 
     public void handleUpdate(Update update) {

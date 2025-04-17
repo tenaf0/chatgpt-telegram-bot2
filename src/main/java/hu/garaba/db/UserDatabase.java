@@ -5,7 +5,6 @@ import hu.garaba.gpt.Model;
 import jakarta.annotation.Nullable;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.math.RoundingMode;
 import java.nio.file.Path;
 import java.sql.Connection;
@@ -14,7 +13,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -170,7 +170,7 @@ public class UserDatabase {
                 costMap = queryCosts(currentMonth);
 
                 GPTUsage type = GPTUsage.valueOf(rs.getString("type"));
-                Model model = Model.valueOf(rs.getString("model"));
+                String model = rs.getString("model");
                 long count = rs.getLong("count");
 
                 sb.append(month)
@@ -205,7 +205,7 @@ public class UserDatabase {
         }
     }
 
-    public record ModelType(GPTUsage type, Model model) {}
+    public record ModelType(GPTUsage type, String model) {}
 
     public Map<ModelType, BigDecimal> queryCosts(LocalDate atDate) throws SQLException {
         try (var st = connection.prepareStatement("""
@@ -225,7 +225,7 @@ public class UserDatabase {
                 int exp = rs.getInt("exp");
                 result.put(new ModelType(
                         GPTUsage.valueOf(rs.getString("type")),
-                        Model.valueOf(rs.getString("model"))),
+                        rs.getString("model")),
                         exp > 0 ? price.multiply(BigDecimal.TEN.pow(exp)) : price.divide(BigDecimal.TEN.pow(-exp))
                         );
             }

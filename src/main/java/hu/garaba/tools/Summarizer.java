@@ -67,7 +67,7 @@ public class Summarizer {
             throw new IllegalArgumentException("Got no text to summarize");
         }
 
-        session.initConversation(Model.GPT4, "You are to provide a comprehensive summary of the given text. " +
+        session.initConversation(Model.GPT_4_1_MINI, "You are to provide a comprehensive summary of the given text. " +
                 "The summary should cover all the key points and main ideas presented in the original text, " +
                 "while also condensing the information into a concise and easy-to-understand format. " +
                 "Please ensure that the summary includes relevant details and examples that support the main ideas, " +

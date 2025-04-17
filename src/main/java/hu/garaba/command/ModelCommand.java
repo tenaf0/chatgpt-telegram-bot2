@@ -6,6 +6,8 @@ import hu.garaba.Session;
 import hu.garaba.gpt.Model;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
+import java.util.Arrays;
+
 public class ModelCommand implements Command {
     @Override
     public void action(BotContext context, Session session, Message message) {
@@ -18,13 +20,7 @@ public class ModelCommand implements Command {
             return;
         }
 
-        Model model = switch (arg) {
-            case "gpto1" -> Model.O1;
-            case "gpto1prev" -> Model.O1_Preview;
-            case "gpt4" -> Model.GPT4;
-            case "gpt3" -> Model.GPT3_TURBO;
-            default -> null;
-        };
+        Model model = Arrays.stream(Model.values()).filter(e -> e.name().equalsIgnoreCase(arg)).findFirst().orElse(null);
 
         if (model == null) {
             messaging.sendMessage(message.getFrom().getId(), "The specified model is unknown");

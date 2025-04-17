@@ -122,7 +122,7 @@ public class BotTest {
         Session sessionMock = mock(Session.class);
         when(sessionManager.getOrCreate(anyLong(), any())).thenReturn(sessionMock);
 
-        when(sessionMock.getModel()).thenReturn(Model.GPT4);
+        when(sessionMock.getModel()).thenReturn(Model.O4_MINI);
 
         Update update = new Update();
         Message message = new Message();
@@ -133,6 +133,6 @@ public class BotTest {
         update.setMessage(message);
 
         communicationHandler.handleUpdate(update);
-        verify(messaging).sendMessage(eq(1L), eq("The current model is GPT4"));
+        verify(messaging).sendMessage(eq(1L), eq("The current model is O4_MINI"));
     }
 }
