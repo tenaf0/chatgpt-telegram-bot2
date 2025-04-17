@@ -7,6 +7,8 @@ import hu.garaba.gpt.Model;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
 import java.util.Arrays;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class ModelCommand implements Command {
     @Override
@@ -16,7 +18,8 @@ public class ModelCommand implements Command {
 
         String arg = text.substring("/model".length()).trim().toLowerCase();
         if (arg.isEmpty()) {
-            messaging.sendMessage(message.getFrom().getId(), "The current model is " + session.getModel());
+            String listOfAvailableModels = Arrays.stream(Model.values()).filter(m -> m.isConversationModel).map(Objects::toString).collect(Collectors.joining(", "));
+            messaging.sendMessage(message.getFrom().getId(), "The current model is " + session.getModel() + ". The available models are: " + listOfAvailableModels);
             return;
         }
 
