@@ -16,7 +16,7 @@ public record TextMessageContent(String text) implements MessageContent {
     @Override
     public JSONObject toJSONObject() {
         return new JSONObject(new HashMap<>(Map.of(
-                "type", "text",
+                "type", "input_text",
                 "text", text
         )));
     }

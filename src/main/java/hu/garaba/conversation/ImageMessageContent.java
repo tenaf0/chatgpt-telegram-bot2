@@ -20,14 +20,13 @@ public record ImageMessageContent(URI uri, long cost, @Nullable Detail detail) i
 
     @Override
     public JSONObject toJSONObject() {
-        Map<String, Object> imageUrlMap = new HashMap<>(Map.of("url", uri.toString()));
-        if (detail != null) {
-            imageUrlMap.put("detail", detail.name().toLowerCase());
-        }
-
-        return new JSONObject(Map.of(
-                "type", "image_url",
-                "image_url", new JSONObject(imageUrlMap)
+        Map<String, Object> map = new HashMap<>(Map.of(
+                "type", "input_image",
+                "image_url", uri.toString()
         ));
+        if (detail != null) {
+            map.put("detail", detail.name().toLowerCase());
+        }
+        return new JSONObject(map);
     }
 }
