@@ -47,9 +47,7 @@ public class BotCommunicationHandler {
 
             var sessionPairs = sessionManager.sessions();
 
-            var iter = sessionPairs.iterator();
-            while (iter.hasNext()) {
-                Map.Entry<Long, Session> sessionPair = iter.next();
+            for (Map.Entry<Long, Session> sessionPair : sessionPairs) {
                 if (sessionPair.getValue().shouldClear(cutoffDate)) {
                     sessionPair.getValue().clearConversation();
                     LOGGER.log(System.Logger.Level.INFO, "Clearing conversation of " + sessionPair.getKey());
@@ -68,7 +66,8 @@ public class BotCommunicationHandler {
         commandHandler.put("continue", (botContext, session, message) -> session.resetClear());
         commandHandler.put("addUser", new AddUserCommand());
         commandHandler.put("usage", new UsageCommand());
-        commandHandler.put("model", new ModelCommand());
+        commandHandler.put("basic", new ModelCommand());
+        commandHandler.put("smart", new ModelCommand());
         commandHandler.put("summarize", new SummarizeCommand());
         commandHandler.put("generateImage", new GenerateImage());
     }

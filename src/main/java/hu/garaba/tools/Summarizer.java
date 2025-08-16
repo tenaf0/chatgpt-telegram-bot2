@@ -1,6 +1,7 @@
 package hu.garaba.tools;
 
 import hu.garaba.Session;
+import hu.garaba.command.ModelCommand;
 import hu.garaba.gpt.Model;
 
 import java.io.BufferedReader;
@@ -67,7 +68,7 @@ public class Summarizer {
             throw new IllegalArgumentException("Got no text to summarize");
         }
 
-        session.initConversation(Model.GPT_4_1_MINI, "You are to provide a comprehensive summary of the given text. " +
+        session.initConversation(new ModelCommand.ModelConfiguration(Model.GPT_5_NANO), "You are to provide a comprehensive summary of the given text. " +
                 "The summary should cover all the key points and main ideas presented in the original text, " +
                 "while also condensing the information into a concise and easy-to-understand format. " +
                 "Please ensure that the summary includes relevant details and examples that support the main ideas, " +

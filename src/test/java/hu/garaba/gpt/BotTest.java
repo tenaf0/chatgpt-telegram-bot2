@@ -115,24 +115,4 @@ public class BotTest {
         verify(db).addUser(2L, "John");
         verify(messaging).sendMessage(eq(1L), eq("Successfully added user!"));
     }
-
-    @Test
-    public void modelChangeTest() {
-        when(db.isWhitelisted(1L)).thenReturn(true);
-        Session sessionMock = mock(Session.class);
-        when(sessionManager.getOrCreate(anyLong(), any())).thenReturn(sessionMock);
-
-        when(sessionMock.getModel()).thenReturn(Model.O4_MINI);
-
-        Update update = new Update();
-        Message message = new Message();
-        User from = new User();
-        from.setId(1L);
-        message.setFrom(from);
-        message.setText("/model");
-        update.setMessage(message);
-
-        communicationHandler.handleUpdate(update);
-        verify(messaging).sendMessage(eq(1L), eq("The current model is O4_MINI"));
-    }
 }

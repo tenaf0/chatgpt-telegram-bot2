@@ -4,34 +4,39 @@ import mill._
 import javalib._
 import os.{Path, RelPath}
 
-import scala.collection.compat.immutable.ArraySeq
+object `package` extends JavaModule with MavenModule {
+  override def jvmId = "temurin:21.0.2"
 
-object `package` extends RootModule with MavenModule {
-  override def ivyDeps: T[Agg[Dep]] = Agg(
-    ivy"jakarta.annotation:jakarta.annotation-api:3.0.0-M1",
-    ivy"org.apache.logging.log4j:log4j-slf4j2-impl:3.0.0-alpha1",
-    ivy"org.apache.logging.log4j:log4j-core:3.0.0-alpha1",
-    ivy"org.apache.logging.log4j:log4j-jpl:3.0.0-alpha1",
 
-    ivy"com.alibaba:fastjson:2.0.53",
-    ivy"org.telegram:telegrambots:6.9.7.1",
+  override def mvnDeps = Seq(
+    mvn"jakarta.annotation:jakarta.annotation-api:3.0.0-M1",
+    mvn"org.apache.logging.log4j:log4j-slf4j2-impl:3.0.0-alpha1",
+    mvn"org.apache.logging.log4j:log4j-core:3.0.0-alpha1",
+    mvn"org.apache.logging.log4j:log4j-jpl:3.0.0-alpha1",
 
-    ivy"com.github.mizosoft.methanol:methanol:1.7.0",
+    mvn"com.alibaba:fastjson:2.0.53",
+    mvn"org.telegram:telegrambots:6.9.7.1",
+
+    mvn"com.github.mizosoft.methanol:methanol:1.7.0",
   )
 
-  override def runIvyDeps: T[Agg[Dep]] = Agg(
-    ivy"org.xerial:sqlite-jdbc:3.47.0.0"
+  override def runMvnDeps = Seq(
+    mvn"org.xerial:sqlite-jdbc:3.47.0.0"
   )
 
   override def mainClass: T[Option[String]] = Some("hu.garaba.Main")
 
-  object test extends MavenModuleTests with TestModule.Junit5 {
-    override def ivyDeps: T[Agg[Dep]] = super.ivyDeps() ++ Agg(
-      ivy"org.junit.jupiter:junit-jupiter:5.11.3",
-      ivy"org.mockito:mockito-junit-jupiter:5.11.0"
+  object test extends JavaTests with TestModule.Junit5 {
+    override def jvmId = "temurin:21.0.2"
+    override def sources = Task.Sources(moduleDir / ".." / "src/test/java")
+
+    override def mvnDeps = Seq(
+      mvn"org.junit.jupiter:junit-jupiter:5.11.3",
+      mvn"org.mockito:mockito-junit-jupiter:5.11.0"
     )
   }
 
+/*
   object liquibase extends Module {
     private def tryList(path: Path): Seq[Path] = try {
       os.list(path)
@@ -69,5 +74,6 @@ object `package` extends RootModule with MavenModule {
         .call(cwd = T.ctx().workspace)
     }
   }
+*/
 }
 

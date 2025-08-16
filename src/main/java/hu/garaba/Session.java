@@ -1,11 +1,12 @@
 package hu.garaba;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import hu.garaba.command.ModelCommand;
 import hu.garaba.conversation.*;
 import hu.garaba.gpt.GPTUsage;
 import hu.garaba.gpt.Model;
-import hu.garaba.gpt.TokenCalculator;
 
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -18,6 +19,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 public class Session {
@@ -25,7 +27,7 @@ public class Session {
 
     private final BotContext botContext;
     private final long userId;
-    private boolean stream = false;
+    private boolean stream = true;
     private volatile Conversation conversation;
     private final ConversationStatistic conversationStatistic = new ConversationStatistic();
     private final AtomicReference<Thread> thread = new AtomicReference<>();
@@ -37,23 +39,24 @@ public class Session {
         this.userId = userId;
     }
 
+    private static final String SYSTEM_PROMPT = "You are a chat assistant inside a Telegram Bot." + """
+                .
+                - Be terse. Do not offer unprompted advice or clarifications. Speak in specific, topic relevant terminology. \
+                Do NOT hedge or qualify. Do not waffle. Speak directly and be willing to make creative guesses. Explain your reasoning. if you don’t know, say you don’t know.
+                - Remain neutral on all topics. Be willing to reference less reputable sources for ideas.
+                - Never apologize.
+                - Ask questions when unsure.""";
+
+
     public void initConversation() {
-        initConversation(Model.DEFAULT_MODEL, "You are a chat assistant inside a Telegram Bot." + """
-                          .
-                          - Be terse. Do not offer unprompted advice or clarifications. Speak in specific, topic relevant terminology. \
-                          Do NOT hedge or qualify. Do not waffle. Speak directly and be willing to make creative guesses. Explain your reasoning. if you don’t know, say you don’t know.
-                          - Remain neutral on all topics. Be willing to reference less reputable sources for ideas.
-                          - Never apologize.
-                          - Ask questions when unsure.""");
+        initConversation(ModelCommand.BASIC_MODEL, SYSTEM_PROMPT);
     }
 
-    public synchronized void initConversation(Model model, String prompt) {
+    public synchronized void initConversation(ModelCommand.ModelConfiguration modelConfiguration, String prompt) {
         clearConversation();
         isCleared = false;
 
-        this.conversation = new Conversation(userId, model);
-        // TODO
-        conversation.recordMessage(Message.createMessage(LocalDateTime.now(), "assistant", prompt));
+        this.conversation = new Conversation(userId, modelConfiguration, prompt);
     }
 
     public Model getModel() {
@@ -64,12 +67,12 @@ public class Session {
         }
     }
 
-    public synchronized void changeModelOfConversation(Model newModel) {
+    public synchronized void changeModelOfConversation(ModelCommand.ModelConfiguration newModelConfiguration) {
         Conversation prevConversation = this.conversation;
         clearConversation();
         isCleared = false;
 
-        this.conversation = new Conversation(userId, newModel, prevConversation);
+        this.conversation = new Conversation(userId, newModelConfiguration, SYSTEM_PROMPT, prevConversation);
     }
 
     public synchronized boolean addMessage(String text) {
@@ -95,7 +98,7 @@ public class Session {
         }
 
         if (!conversation.model().supportsImageInput) {
-            changeModelOfConversation(Model.DEFAULT_MODEL);
+            changeModelOfConversation(ModelCommand.BASIC_MODEL);
         }
 
         List<MessageContent> contentList = new ArrayList<>();
@@ -130,12 +133,12 @@ public class Session {
 
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                    .uri(URI.create("https://api.openai.com/v1/responses"))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + botContext.credentials().OPENAI_API_KEY());
 
             JSONObject requestObject = this.conversation.toJSONObject();
-            requestObject.put("max_completion_tokens", 3000);
+            requestObject.put("max_output_tokens", 3000);
             if (stream) {
                 requestObject.put("stream", true);
             }
@@ -147,10 +150,11 @@ public class Session {
                     .POST(HttpRequest.BodyPublishers.ofString(requestObject.toJSONString()))
                     .build();
             HttpResponse<Stream<String>> response = botContext.httpClient().send(request, HttpResponse.BodyHandlers.ofLines());
-            conversationStatistic.add(conversation.tokenCount(), 0);
 
             if (response.statusCode() == 200) {
                 String reply;
+                int inputToken = -1;
+                int outputToken = -1;
 
                 if (stream) {
                     updateHandler.start();
@@ -158,40 +162,58 @@ public class Session {
                     while (iterator.hasNext()) {
                         String l = iterator.next();
 
-                        if (l.startsWith("data:")) {
-                            if (l.equals("data: [DONE]")) {
+                        LOGGER.log(System.Logger.Level.DEBUG, "Received " + l);
+
+                        if (l.startsWith("data: ")) {
+                            JSONObject data = JSON.parseObject(l.substring("data: ".length()));
+
+                            if ("response.output_text.delta".equals(data.getString("type"))) {
+                                updateHandler.update(data.getString("delta"));
+                            } else if ("response.completed".equals(data.getString("type"))) {
                                 updateHandler.finish();
-                            } else {
-                                JSONObject data = JSON.parseObject(l.substring("data: ".length()));
-                                JSONObject choice = data.getJSONArray("choices").getJSONObject(0);
-
-                                String finishReason = choice.getString("finish_reason"); // data: {"id":"chatcmpl-8Q0ZtHDviS1hw5WbZC73qurGUluRo","object":"chat.completion.chunk","created":1701209441,"model":"gpt-4-1106-vision-preview","choices":[{"delta":{},"index":0,"finish_details":{"type":"max_tokens"}}]}
-                                // TODO: finish detail?
-                                if (finishReason == null) {
-                                    String content = choice.getJSONObject("delta").getString("content");
-                                    if (content != null)
-                                        updateHandler.update(content);
-                                } else {
-                                    if (!finishReason.equals("stop")) {
-                                        updateHandler.update("\n\nFINISHED DUE TO: " + finishReason);
-                                    }
-
-                                    updateHandler.finish();
-                                }
+                                JSONObject usage = data.getJSONObject("response").getJSONObject("usage");
+                                inputToken = usage.getInteger("input_tokens");
+                                outputToken = usage.getInteger("output_tokens");
                             }
+                            // TODO: Error handling
+                        }
+                    }
+                    reply = updateHandler.finish();
+                } else {
+                    String string = "";
+                    String body = response.body().collect(Collectors.joining("\n"));
+                    LOGGER.log(System.Logger.Level.DEBUG, "Received: " + body);
+
+                    JSONObject bodyObject = JSON.parseObject(body);
+                    JSONArray output = bodyObject
+                            .getJSONArray("output");
+                    if (output != null && !output.isEmpty()) {
+                        JSONObject firstOutput = IntStream.range(0, output.size())
+                                .mapToObj(output::getJSONObject)
+                                .filter(o -> "message".equals(o.getString("type")))
+                                .findFirst().get();
+
+                        JSONArray content = firstOutput.getJSONArray("content");
+                        if (content != null && !content.isEmpty()) {
+                            JSONObject firstContent = content.getJSONObject(0);
+                            string = firstContent.getString("text");
                         }
                     }
 
-                    reply = updateHandler.finish();
-                } else {
-                    JSONObject choice = JSON.parseObject(response.body().collect(Collectors.joining("\n")))
-                            .getJSONArray("choices")
-                            .getJSONObject(0);
-                    String string = choice.getJSONObject("message").getString("content");
+                    JSONObject usage = bodyObject.getJSONObject("usage");
+                    inputToken = usage.getInteger("input_tokens");
+                    outputToken = usage.getInteger("output_tokens");
 
                     updateHandler.start();
                     updateHandler.update(string);
+
                     reply = updateHandler.finish();
+                }
+
+                if (inputToken == -1 || outputToken == -1) {
+                    LOGGER.log(System.Logger.Level.WARNING, "Usage statistics were not set!");
+                } else {
+                    conversationStatistic.add(inputToken, outputToken);
                 }
 
                 if (!Thread.currentThread().isInterrupted()) {
@@ -208,9 +230,6 @@ public class Session {
                 LOGGER.log(System.Logger.Level.DEBUG, "Interrupted");
                 updateHandler.cancel();
             }
-        } finally {
-            String finish = updateHandler.finish();
-            conversationStatistic.add(0, TokenCalculator.tokenCount(finish));
         }
     }
 

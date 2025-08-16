@@ -1,35 +1,49 @@
 package hu.garaba.command;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import hu.garaba.BotContext;
 import hu.garaba.Messaging;
 import hu.garaba.Session;
 import hu.garaba.gpt.Model;
 import org.telegram.telegrambots.meta.api.objects.Message;
 
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 public class ModelCommand implements Command {
+    public static final ModelConfiguration SMART_MODEL = new ModelConfiguration(Model.GPT_5, Map.of(
+            "tools", JSONArray.parse("""
+                    [{ type: "web_search_preview", user_location: {type: "approximate", region: "EU"}}]
+                    """)
+    ));
+    public static final ModelConfiguration BASIC_MODEL = new ModelConfiguration(Model.GPT_5_MINI, Map.of(
+            "reasoning", JSONObject.parse("{\"effort\": \"minimal\"}")
+    ));
+
+    public record ModelConfiguration(Model model, Map<String, Object> extraParams) {
+        public ModelConfiguration(Model model) {
+            this(model, Map.of());
+        }
+    }
+
     @Override
     public void action(BotContext context, Session session, Message message) {
         String text = message.getText();
         Messaging messaging = context.messaging();
 
-        String arg = text.substring("/model".length()).trim().toLowerCase();
-        if (arg.isEmpty()) {
-            String listOfAvailableModels = Arrays.stream(Model.values()).filter(m -> m.isConversationModel).map(Objects::toString).collect(Collectors.joining(", "));
-            messaging.sendMessage(message.getFrom().getId(), "The current model is " + session.getModel() + ". The available models are: " + listOfAvailableModels);
-            return;
-        }
-
-        Model model = Arrays.stream(Model.values()).filter(e -> e.name().equalsIgnoreCase(arg)).findFirst().orElse(null);
-
-        if (model == null) {
-            messaging.sendMessage(message.getFrom().getId(), "The specified model is unknown");
+        String mode;
+        ModelConfiguration model;
+        if (text.startsWith("/smart")) {
+            mode = "smart";
+            model =  SMART_MODEL;
+        } else if (text.startsWith("/basic")) {
+            mode = "basic";
+            model = BASIC_MODEL;
         } else {
-            session.changeModelOfConversation(model);
-            messaging.sendMessage(message.getFrom().getId(), "Now using model: " + model);
+            throw new IllegalStateException("Unknown mode: " + text);
         }
+
+        session.changeModelOfConversation(model);
+        messaging.sendMessage(message.getFrom().getId(), "Now in " + mode + " mode");
     }
 }
