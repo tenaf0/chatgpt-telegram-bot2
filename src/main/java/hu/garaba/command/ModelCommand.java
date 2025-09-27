@@ -16,7 +16,7 @@ public class ModelCommand implements Command {
                     [{ type: "web_search_preview", user_location: {type: "approximate", region: "EU"}}]
                     """)
     ));
-    public static final ModelConfiguration BASIC_MODEL = new ModelConfiguration(Model.GPT_5_MINI, Map.of(
+    public static final ModelConfiguration BASIC_MODEL = new ModelConfiguration(Model.GPT_5, Map.of(
             "reasoning", JSONObject.parse("{\"effort\": \"minimal\"}")
     ));
 
